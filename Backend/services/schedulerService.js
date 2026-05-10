@@ -18,7 +18,7 @@ async function autoCompleteOldPendingTransactions() {
              SET status = 'SUCCESS',
                  notes  = 'Transaksi otomatis diselesaikan (scheduler)'
              WHERE status = 'PENDING'
-               AND created_at <= NOW() - (? * INTERVAL '1 MINUTE')`,
+               AND updated_at <= NOW() - (? * INTERVAL '1 MINUTE')`,
             [AUTO_COMPLETE_MINUTES]
         );
 
