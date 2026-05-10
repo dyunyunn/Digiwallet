@@ -16,7 +16,7 @@ class UserService {
          */
         async getUserByEmail(email) {
             const [rows] = await pool.query(
-                'SELECT * FROM users WHERE email = ?',
+                'SELECT * FROM users WHERE email = ? AND deleted_at IS NULL',
                 [email]
             );
             return rows.length > 0 ? rows[0] : null;
@@ -35,7 +35,7 @@ class UserService {
         }
         const fixedName = toTitleCase(name);
         const [existing] = await pool.query(
-            'SELECT id FROM users WHERE email = ?',
+            'SELECT id FROM users WHERE email = ? AND deleted_at IS NULL',
             [email]
         );
         if (existing.length > 0) {
@@ -66,7 +66,7 @@ class UserService {
      */
     async getUsers(page = 1, limit = 10, search = '', sortBy = 'created_at', sortDir = 'DESC', filters = {}) {
         const offset = (page - 1) * limit;
-        let where = [];
+        let where = ['deleted_at IS NULL'];
         let values = [];
         if (search) {
             where.push('name LIKE ?');
@@ -121,7 +121,7 @@ class UserService {
     async getUserById(id) {
         const [rows] = await pool.query(
             `SELECT id, name, email, phone_number, balance, role, created_at, updated_at 
-             FROM users WHERE id = ?`,
+             FROM users WHERE id = ? AND deleted_at IS NULL`,
             [id]
         );
         if (rows.length === 0) {
@@ -143,7 +143,7 @@ class UserService {
         const { name, email, password, phone_number, balance, role } = userData;
         if (email) {
             const [existing] = await pool.query(
-                'SELECT id FROM users WHERE email = ? AND id != ?',
+                'SELECT id FROM users WHERE email = ? AND deleted_at IS NULL AND id != ?',
                 [email, id]
             );
             if (existing.length > 0) {
@@ -192,11 +192,12 @@ class UserService {
     }
 
     /**
-     * Delete user
+     * Delete user (Soft / Hard Delete)
      * @param {number} id - User ID
+     * @param {boolean} isHardDelete - If true, permanently delete from DB
      * @returns {boolean} Success status
      */
-    async deleteUser(id) {
+    async deleteUser(id, isHardDelete = false) {
         // Check if user exists
         await this.getUserById(id);
         
@@ -207,12 +208,23 @@ class UserService {
         );
         
         if (transactions.length > 0) {
-            const error = new Error('User tidak dapat dihapus karena sudah memiliki transaksi');
-            error.status = 400;
-            throw error;
+            if (isHardDelete) {
+                const error = new Error('User tidak dapat di-hard-delete karena sudah memiliki transaksi');
+                error.status = 400;
+                throw error;
+            } else {
+                // Soft delete
+                await pool.query('UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+                return true;
+            }
         }
         
-        await pool.query('DELETE FROM users WHERE id = ?', [id]);
+        if (isHardDelete) {
+            await pool.query('DELETE FROM users WHERE id = ?', [id]);
+        } else {
+            await pool.query('UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+        }
+        
         return true;
     }
 
@@ -226,7 +238,7 @@ class UserService {
     async deductBalance(connection, userId, amount) {
         // Lock the row for update (prevent race condition)
         const [users] = await connection.query(
-            'SELECT id, balance FROM users WHERE id = ? FOR UPDATE',
+            'SELECT id, balance FROM users WHERE id = ? AND deleted_at IS NULL FOR UPDATE',
             [userId]
         );
         

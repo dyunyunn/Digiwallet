@@ -130,15 +130,16 @@ class ProductController {
 
     /**
      * Delete product
-     * DELETE /api/products/:id
+     * DELETE /api/products/:id?hard=true
      */
     async deleteProduct(req, res) {
         try {
-            await productService.deleteProduct(parseInt(req.params.id));
+            const isHardDelete = req.query.hard === 'true';
+            await productService.deleteProduct(parseInt(req.params.id), isHardDelete);
             return successResponse(
                 res, 
                 null, 
-                SUCCESS_MESSAGES.PRODUCT_DELETED
+                isHardDelete ? 'Produk berhasil dihapus secara permanen (hard delete)' : 'Produk berhasil dihapus (soft delete)'
             );
         } catch (error) {
             return errorResponse(

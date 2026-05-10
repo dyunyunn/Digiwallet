@@ -167,15 +167,16 @@ class UserController {
 
     /**
      * Delete user
-     * DELETE /api/users/:id
+     * DELETE /api/users/:id?hard=true
      */
     async deleteUser(req, res) {
         try {
-            await userService.deleteUser(parseInt(req.params.id));
+            const isHardDelete = req.query.hard === 'true';
+            await userService.deleteUser(parseInt(req.params.id), isHardDelete);
             return successResponse(
                 res, 
                 null, 
-                SUCCESS_MESSAGES.USER_DELETED
+                isHardDelete ? 'User berhasil dihapus secara permanen (hard delete)' : 'User berhasil dihapus (soft delete)'
             );
         } catch (error) {
             return errorResponse(

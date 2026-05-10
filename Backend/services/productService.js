@@ -18,7 +18,7 @@ class ProductService {
         // Pastikan kapitalisasi nama produk
         const fixedName = toTitleCase(name);
         // Cek duplikasi produk berdasarkan nama (dan kategori jika diperlukan)
-        let duplicateQuery = 'SELECT id FROM products WHERE name = ?';
+        let duplicateQuery = 'SELECT id FROM products WHERE name = ? AND deleted_at IS NULL';
         let duplicateParams = [fixedName];
         if (category_id) {
             duplicateQuery += ' AND category_id = ?';
@@ -70,7 +70,7 @@ class ProductService {
         } = options;
         const offset = (page - 1) * limit;
         // Build where clause
-        const conditions = [];
+        const conditions = ['p.deleted_at IS NULL'];
         const values = [];
         if (type) {
             conditions.push('p.type = ?');
@@ -138,7 +138,7 @@ class ProductService {
             `SELECT p.id, p.name, p.category_id, c.name as category_name, p.type, p.price, p.description, p.is_active, p.created_at, p.updated_at 
              FROM products p
              LEFT JOIN categories c ON p.category_id = c.id
-             WHERE p.id = ?`,
+             WHERE p.id = ? AND p.deleted_at IS NULL`,
             [id]
         );
         
@@ -234,11 +234,12 @@ class ProductService {
     }
 
     /**
-     * Delete product
+     * Delete product (Soft / Hard Delete)
      * @param {number} id - Product ID
+     * @param {boolean} isHardDelete - Hard delete flag
      * @returns {boolean} Success status
      */
-    async deleteProduct(id) {
+    async deleteProduct(id, isHardDelete = false) {
         // Check if product exists
         await this.getProductById(id);
         
@@ -249,12 +250,23 @@ class ProductService {
         );
         
         if (transactions.length > 0) {
-            const error = new Error(ERROR_MESSAGES.PRODUCT_HAS_TRANSACTIONS);
-            error.status = 400;
-            throw error;
+            if (isHardDelete) {
+                const error = new Error('Produk tidak dapat di-hard-delete karena sudah memiliki transaksi');
+                error.status = 400;
+                throw error;
+            } else {
+                // Soft delete
+                await pool.query('UPDATE products SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+                return true;
+            }
         }
         
-        await pool.query('DELETE FROM products WHERE id = ?', [id]);
+        if (isHardDelete) {
+            await pool.query('DELETE FROM products WHERE id = ?', [id]);
+        } else {
+            await pool.query('UPDATE products SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+        }
+        
         return true;
     }
 
@@ -267,7 +279,7 @@ class ProductService {
         const [rows] = await pool.query(
             `SELECT id, name, type, price, description, is_active, created_at, updated_at 
              FROM products 
-             WHERE type = ? AND is_active = TRUE
+             WHERE type = ? AND is_active = TRUE AND deleted_at IS NULL
              ORDER BY price ASC`,
             [type]
         );
