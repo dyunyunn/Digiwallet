@@ -51,11 +51,11 @@ class UserService {
             fixedPhone = phone_number.replace(/^0/, '+62');
         }
         const [result] = await pool.query(
-            'INSERT INTO users (name, email, password, phone_number, balance, role) VALUES (?, ?, ?, ?, 0, ?)',
+            'INSERT INTO users (name, email, password, phone_number, balance, role) VALUES (?, ?, ?, ?, 0, ?) RETURNING id',
             [fixedName, email, hashedPassword, fixedPhone || null, role || 'USER']
         );
         
-        return this.getUserById(result.insertId);
+        return this.getUserById(result[0].id);
     }
 
     /**

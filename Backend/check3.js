@@ -1,0 +1,1 @@
+﻿const { Client } = require('pg'); const client = new Client({ user: 'postgres', password: '12345678', host: 'localhost', port: 5432, database: 'DigiWallet' }); client.connect().then(() => client.query('SELECT * FROM users LIMIT 1;')).then(res => console.log(res.fields.map(f => f.name))).catch(e => console.log(e)).finally(() => client.end());

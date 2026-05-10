@@ -1,0 +1,1 @@
+const { Client } = require('pg'); const client = new Client({ user: 'postgres', password: '12345678', host: 'localhost', port: 5432, database: 'DigiWallet' }); client.connect().then(() => client.query('ALTER TABLE users DROP COLUMN hash;')).then(() => console.log('Column hash removed!')).catch(e => console.log('Error:', e.message)).finally(() => client.end());

@@ -164,14 +164,12 @@ class TransactionService {
             `INSERT INTO rawtext 
              (transaction_id, user_id, product_id, product_name, product_type, customer_number, subtotal, tax_amount, total_amount, reference_number, status, receipt_text, receipt_blob)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-             status = ?, receipt_text = ?, receipt_blob = ?, updated_at = CURRENT_TIMESTAMP`,
+             ON CONFLICT (transaction_id) DO UPDATE SET
+             status = EXCLUDED.status, receipt_text = EXCLUDED.receipt_text, receipt_blob = EXCLUDED.receipt_blob, updated_at = CURRENT_TIMESTAMP`,
             [
                 transaction.id || 0, user.id, product.id, product.name, product.type, transaction.customer_number,
                 subtotal, tax, transaction.amount, transaction.reference_number, transaction.status,
-                receiptText, receiptBlob,
-                // Update part
-                transaction.status, receiptText, receiptBlob
+                receiptText, receiptBlob
             ]
         );
     }
@@ -263,15 +261,17 @@ class TransactionService {
             const [result] = await connection.query(
                 `INSERT INTO transactions 
                  (user_id, product_id, customer_number, amount, status, reference_number) 
-                 VALUES (?, ?, ?, ?, 'PENDING', ?)`,
+                 VALUES (?, ?, ?, ?, 'PENDING', ?) RETURNING id`,
                 [user_id, product_id, customer_number, amount, referenceNumber]
             );
+            
+            const transactionId = result[0].id;
             
             // 8. Save receipt to rawtext table
             try {
                 const receiptText = this.generateReceiptText(
                     { 
-                        id: result.insertId,
+                        id: transactionId,
                         customer_number: customer_number,
                         amount: amount,
                         reference_number: referenceNumber,
@@ -289,7 +289,7 @@ class TransactionService {
                      (transaction_id, user_id, product_id, product_name, product_type, customer_number, subtotal, tax_amount, total_amount, reference_number, status, receipt_text, receipt_blob)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
-                        result.insertId, user_id, product_id, product.name, product.type, customer_number,
+                        transactionId, user_id, product_id, product.name, product.type, customer_number,
                         subtotal, tax, amount, referenceNumber, 'PENDING',
                         receiptText, receiptBlob
                     ]
@@ -303,7 +303,7 @@ class TransactionService {
             await connection.commit();
             
             // Get the created transaction
-            const createdTransaction = await this.getTransactionById(result.insertId);
+            const createdTransaction = await this.getTransactionById(transactionId);
             
             // Add tax breakdown to response
             createdTransaction.subtotal = subtotal.toFixed(2);
@@ -316,19 +316,19 @@ class TransactionService {
                     // Check if transaction is still PENDING before auto-completing
                     const [currentStatus] = await pool.query(
                         'SELECT status FROM transactions WHERE id = ?',
-                        [result.insertId]
+                        [transactionId]
                     );
                     
                     if (currentStatus.length > 0 && currentStatus[0].status === 'PENDING') {
                         // Auto-complete to SUCCESS
                         await pool.query(
                             "UPDATE transactions SET status = 'SUCCESS', notes = 'Transaksi otomatis diselesaikan' WHERE id = ?",
-                            [result.insertId]
+                            [transactionId]
                         );
-                        console.log(`Transaction ${result.insertId} auto-completed to SUCCESS`);
+                        console.log(`Transaction ${transactionId} auto-completed to SUCCESS`);
                     }
                 } catch (error) {
-                    console.error(`Error auto-completing transaction ${result.insertId}:`, error);
+                    console.error(`Error auto-completing transaction ${transactionId}:`, error);
                 }
             }, 1 * 60 * 1000); // 1 minute
             

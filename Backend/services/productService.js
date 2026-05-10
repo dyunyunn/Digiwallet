@@ -44,10 +44,10 @@ class ProductService {
         }
         const [result] = await pool.query(
             `INSERT INTO products (name, category_id, type, price, description, is_active) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
             [fixedName, category_id || null, type, price, description || null, is_active]
         );
-        return this.getProductById(result.insertId);
+        return this.getProductById(result[0].id);
     }
 
     /**

@@ -10,12 +10,47 @@ class PgCompatiblePool extends Pool {
             text = text.replace(/\?/g, () => `$${index++}`);
         }
         const result = await super.query(text, params);
+        
+        // Emulate mysql2 payload objects for UPDATE/DELETE so result.affectedRows works
+        const rows = result.rows || [];
+        rows.affectedRows = result.rowCount;
+        
         // mysql2 returns [rows, fields]
-        return [result.rows, result.fields];
+        return [rows, result.fields];
     }
     
     async execute(text, params) {
         return this.query(text, params);
+    }
+
+    async getConnection() {
+        const client = await super.connect();
+        
+        // Mock mysql2 transaction functions
+        client.beginTransaction = async () => {
+            await client.query('BEGIN');
+        };
+        client.commit = async () => {
+            await client.query('COMMIT');
+        };
+        client.rollback = async () => {
+            await client.query('ROLLBACK');
+        };
+        
+        // Mock the query function on the client matching mysql2
+        const originalQuery = client.query.bind(client);
+        client.query = async (text, params) => {
+            if (typeof text === 'string') {
+                let index = 1;
+                text = text.replace(/\?/g, () => `$${index++}`);
+            }
+            const result = await originalQuery(text, params);
+            const rows = result.rows || [];
+            rows.affectedRows = result.rowCount;
+            return [rows, result.fields];
+        };
+
+        return client;
     }
 }
 

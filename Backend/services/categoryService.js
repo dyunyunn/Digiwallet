@@ -46,10 +46,10 @@ class CategoryService {
         }
         const [result] = await pool.query(
             `INSERT INTO categories (name, parent_id, description, is_active) 
-             VALUES (?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?) RETURNING id`,
             [fixedName, parent_id || null, description || null, is_active]
         );
-        return this.getCategoryById(result.insertId);
+        return this.getCategoryById(result[0].id);
     }
     async updateCategory(id, categoryData) {
         const { name, parent_id, description, is_active } = categoryData;

@@ -237,7 +237,7 @@ const LogService = {
     async deleteOldLogs(days = 30) {
         try {
             const [result] = await pool.execute(
-                'DELETE FROM logs WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)',
+                'DELETE FROM logs WHERE created_at < NOW() - (? * INTERVAL \'1 DAY\')',
                 [days]
             );
             return result.affectedRows;

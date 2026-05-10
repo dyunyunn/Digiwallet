@@ -1,8 +1,11 @@
 -- PPOB (Payment Point Online Bank) Database Schema
 -- DigiWallet - Complete Database Design for PostgreSQL
+-- Termasuk semua tabel tambahan seperti 'logs' dan 'rawtext'
 -- =============================================
 
--- 1. Drop Tables (dengan urutan yang aman)
+-- 1. Drop Tables (dengan urutan yang aman dari child ke parent)
+DROP TABLE IF EXISTS logs CASCADE;
+DROP TABLE IF EXISTS rawtext CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
@@ -14,7 +17,7 @@ DROP TYPE IF EXISTS user_role CASCADE;
 DROP TYPE IF EXISTS product_type CASCADE;
 DROP TYPE IF EXISTS transaction_status CASCADE;
 
--- 3. Membuat Fungsi Trigger untuk updated_at
+-- 3. Create Trigger Function untuk updated_at
 CREATE OR REPLACE FUNCTION update_modified_column()   
 RETURNS TRIGGER AS $$
 BEGIN
@@ -23,7 +26,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- 4. Membuat Tipe Data ENUM
+-- 4. Create ENUMs
 CREATE TYPE user_role AS ENUM ('USER', 'ADMIN');
 CREATE TYPE product_type AS ENUM ('pulsa', 'data', 'pln', 'pdam', 'internet', 'game', 'ewallet');
 CREATE TYPE transaction_status AS ENUM ('PENDING', 'SUCCESS', 'FAILED', 'REFUNDED');
@@ -35,7 +38,6 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
-    hash VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL DEFAULT '',
     phone_number VARCHAR(15) NULL,
     balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
@@ -47,8 +49,7 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_phone ON users(phone_number);
 
-CREATE TRIGGER update_users_modtime 
-BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+CREATE TRIGGER update_users_modtime BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 
 -- =============================================
 -- TABLE: sessions
@@ -82,8 +83,7 @@ CREATE TABLE categories (
 CREATE INDEX idx_categories_parent ON categories(parent_id);
 CREATE INDEX idx_categories_active ON categories(is_active);
 
-CREATE TRIGGER update_categories_modtime 
-BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+CREATE TRIGGER update_categories_modtime BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 
 -- =============================================
 -- TABLE: products
@@ -107,8 +107,7 @@ CREATE INDEX idx_products_active ON products(is_active);
 CREATE INDEX idx_products_price ON products(price);
 CREATE INDEX idx_products_created ON products(created_at);
 
-CREATE TRIGGER update_products_modtime 
-BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+CREATE TRIGGER update_products_modtime BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 
 -- =============================================
 -- TABLE: transactions  
@@ -134,11 +133,60 @@ CREATE INDEX idx_transactions_status ON transactions(status);
 CREATE INDEX idx_transactions_created ON transactions(created_at);
 CREATE INDEX idx_transactions_reference ON transactions(reference_number);
 
-CREATE TRIGGER update_transactions_modtime 
-BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+CREATE TRIGGER update_transactions_modtime BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 
 -- =============================================
--- SAMPLE DATA (Opsional)
+-- TABLE: rawtext (Penyimpanan receipt transaksi)
+-- =============================================
+CREATE TABLE rawtext (
+    id SERIAL PRIMARY KEY,
+    transaction_id INT NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    product_id INT NOT NULL,
+    product_name VARCHAR(100) NOT NULL,
+    product_type VARCHAR(50) NOT NULL,
+    customer_number VARCHAR(50) NOT NULL,
+    subtotal DECIMAL(15, 2) NOT NULL,
+    tax_amount DECIMAL(15, 2) NOT NULL, -- Asumsikan 11% tax
+    total_amount DECIMAL(15, 2) NOT NULL,
+    reference_number VARCHAR(50) NOT NULL,
+    status VARCHAR(50) DEFAULT 'PENDING',
+    receipt_text TEXT NOT NULL,
+    receipt_blob BYTEA NOT NULL, -- LONGBLOB diconvert jadi BYTEA di pgsql
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rawtext_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_rawtext_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_rawtext_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_rawtext_transaction ON rawtext(transaction_id);
+CREATE INDEX idx_rawtext_user ON rawtext(user_id);
+CREATE INDEX idx_rawtext_reference ON rawtext(reference_number);
+CREATE INDEX idx_rawtext_status ON rawtext(status);
+CREATE INDEX idx_rawtext_created ON rawtext(created_at);
+
+CREATE TRIGGER update_rawtext_modtime BEFORE UPDATE ON rawtext FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+
+-- =============================================
+-- TABLE: logs (Penyimpanan API request log)
+-- =============================================
+CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    operation_type VARCHAR(10) NOT NULL,
+    http_status_code INT NOT NULL,
+    response TEXT,
+    endpoint VARCHAR(255) NOT NULL
+);
+
+CREATE INDEX idx_logs_created_at ON logs(created_at);
+CREATE INDEX idx_logs_operation ON logs(operation_type);
+CREATE INDEX idx_logs_status ON logs(http_status_code);
+CREATE INDEX idx_logs_endpoint ON logs(endpoint);
+
+-- =============================================
+-- SAMPLE DATA (Initial Data / Seeders)
 -- =============================================
 INSERT INTO categories (name, parent_id, description, is_active) VALUES
 ('Top Up', NULL, 'Layanan isi ulang pulsa dan paket', TRUE),
