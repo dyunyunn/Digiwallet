@@ -212,17 +212,52 @@ export default function MainPage() {
             </header>
 
             <div className="p-8">
-              <div className="grid grid-cols-1 gap-6">
-                <div className="flex flex-col gap-6">
-                  <BalanceCard balance={24563.8} />
-                  <StatsGrid stats={MOCK_STATS} />
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Manajemen Aplikasi</h2>
+                <p className="text-sm text-gray-500">Pilih menu di bawah untuk mengelola operasi DigiWallet.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                
+                {permissions.canManageProducts && (
+                <div onClick={() => setActiveTab('products')} className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-purple-500 hover:shadow-lg transition cursor-pointer flex items-center gap-5">
+                  <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center text-2xl shrink-0">📦</div>
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">{MAIN_TEXT.QUICK_ACTIONS}</h3>
-                    <QuickActions onAction={handleQuickAction} />
+                    <h3 className="text-lg font-bold text-gray-900">Produk</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Kelola daftar produk PPOB dan harganya.</p>
                   </div>
-                  <SpendingChart />
-                  <TransactionList transactions={MOCK_TRANSACTIONS} />
                 </div>
+                )}
+
+                {permissions.canManageCategories && (
+                <div onClick={() => setActiveTab('categories')} className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition cursor-pointer flex items-center gap-5">
+                  <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl shrink-0">📂</div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Kategori</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Atur pengelompokan produk.</p>
+                  </div>
+                </div>
+                )}
+
+                {permissions.canManageUsers && (
+                <div onClick={() => setActiveTab('users')} className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-green-500 hover:shadow-lg transition cursor-pointer flex items-center gap-5">
+                  <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl shrink-0">👥</div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Pengguna</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Manajemen pelanggan & admin sistem.</p>
+                  </div>
+                </div>
+                )}
+                
+                {permissions.canViewAnalytics && (
+                <div onClick={() => setActiveTab('analytics')} className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-yellow-500 hover:shadow-lg transition cursor-pointer flex items-center gap-5">
+                  <div className="w-14 h-14 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center text-2xl shrink-0">📈</div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Laporan & Analitik</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Pantau laporan transaksi harian.</p>
+                  </div>
+                </div>
+                )}
+
               </div>
             </div>
 
@@ -257,3 +292,4 @@ export default function MainPage() {
     </div>
   );
 }
+

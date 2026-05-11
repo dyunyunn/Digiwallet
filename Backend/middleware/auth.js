@@ -9,9 +9,9 @@ async function authMiddleware(req, res, next) {
         return res.status(401).json({ message: 'Tidak memiliki wewenang: Token tidak ditemukan' });
     }
     const token = authHeader.replace('Bearer ', '');
-    // Find session by token and check expiry
+    // Find session by token and check expiry, and ensure user is not soft-deleted
     const [sessions] = await pool.query(
-        'SELECT s.*, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ?',
+        'SELECT s.*, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ? AND u.deleted_at IS NULL',
         [token]
     );
     if (sessions.length === 0) {
