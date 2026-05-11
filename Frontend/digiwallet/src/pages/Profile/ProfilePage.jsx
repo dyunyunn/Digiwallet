@@ -123,6 +123,7 @@ export default function ProfilePage() {
         name: profile.name || "",
         email: profile.email || "",
         phone_number: profile.phone_number || "",
+        monthly_limit: profile.monthly_limit || "",
       });
     }
   }, [profile]);
@@ -146,6 +147,7 @@ export default function ProfilePage() {
       name: profile.name || "",
       email: profile.email || "",
       phone_number: profile.phone_number || "",
+      monthly_limit: profile.monthly_limit || "",
     });
   };
 
@@ -267,11 +269,15 @@ export default function ProfilePage() {
             </p>
             <div className="flex gap-2 flex-wrap">
               <StatBadge
-                label="Status"
-                value={profile?.is_active ? "Active" : "Inactive"}
-                color={profile?.is_active ? "green" : "gray"}
+                label="Role"
+                value={profile?.role || "USER"}
+                color="purple"
               />
-              {/* Role stat hidden by user request */}
+              <StatBadge
+                 label="Monthly Limit"
+                 value={profile?.monthly_limit > 0 ? formatCurrency(profile?.monthly_limit) : "Unlimited"}
+                 color="yellow"
+              />
             </div>
           </div>
         </div>
@@ -349,6 +355,18 @@ export default function ProfilePage() {
                 value={form.phone_number}
                 onChange={handleChange}
               />
+              <EditField
+                label="Monthly Limit"
+                name="monthly_limit"
+                type="number"
+                value={form.monthly_limit}
+                onChange={handleChange}
+              />
+              <div className="sm:col-span-2">
+                <p className="text-xs text-gray-400 -mt-2.5">
+                  *Set limit bulanan Anda. Masukkan 0 jika tidak ingin menggunakan limit pengeluaran per bulan.
+                </p>
+              </div>
               {/* Read-only fields in edit mode */}
               {/* Role field hidden in edit mode */}
             </div>

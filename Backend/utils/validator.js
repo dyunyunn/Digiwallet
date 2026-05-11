@@ -69,6 +69,9 @@ const updateUserValidation = [
     body('balance')
         .optional()
         .isFloat({ min: 0 }).withMessage('Saldo tidak boleh negatif'),
+    body('monthly_limit')
+        .optional()
+        .isFloat({ min: 0 }).withMessage('Limit bulanan tidak boleh negatif'),
     handleValidationErrors
 ];
 

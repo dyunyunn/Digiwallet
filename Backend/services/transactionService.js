@@ -202,7 +202,7 @@ class TransactionService {
             
             // 1. Validate user exists
             const [users] = await connection.query(
-                'SELECT id, name, balance FROM users WHERE id = ? FOR UPDATE',
+                'SELECT id, name, balance, monthly_limit FROM users WHERE id = ? FOR UPDATE',
                 [user_id]
             );
             
@@ -245,6 +245,38 @@ class TransactionService {
                 const error = new Error(ERROR_MESSAGES.INSUFFICIENT_BALANCE);
                 error.status = 400;
                 throw error;
+            }
+
+            // 4.5. Check monthly limit if set
+            const userLimit = parseFloat(user.monthly_limit || 0);
+            if (userLimit > 0) {
+                // Determine start of current month
+                const startOfMonth = new Date();
+                startOfMonth.setDate(1);
+                startOfMonth.setHours(0, 0, 0, 0);
+
+                const endOfMonth = new Date();
+                endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+                endOfMonth.setDate(0);
+                endOfMonth.setHours(23, 59, 59, 999);
+
+                // calculate current spending
+                const [spendingResult] = await connection.query(
+                    `SELECT SUM(amount) as current_spending 
+                     FROM transactions 
+                     WHERE user_id = ? 
+                       AND status IN ('SUCCESS', 'PENDING')
+                       AND created_at >= ?
+                       AND created_at <= ?`,
+                    [user_id, startOfMonth, endOfMonth]
+                );
+
+                const currentSpending = parseFloat(spendingResult[0].current_spending || 0);
+                if ((currentSpending + amount) > userLimit) {
+                    const error = new Error(`Transaksi dibatalkan. Total pengeluaran bulanan Anda (${currentSpending + amount}) akan melebihi limit bulanan (${userLimit}).`);
+                    error.status = 400;
+                    throw error;
+                }
             }
             
             // 5. Generate reference number

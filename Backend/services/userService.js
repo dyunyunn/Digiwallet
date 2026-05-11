@@ -120,7 +120,7 @@ class UserService {
      */
     async getUserById(id) {
         const [rows] = await pool.query(
-            `SELECT id, name, email, phone_number, balance, role, created_at, updated_at 
+            `SELECT id, name, email, phone_number, balance, role, created_at, updated_at, monthly_limit 
              FROM users WHERE id = ? AND deleted_at IS NULL`,
             [id]
         );
@@ -140,7 +140,7 @@ class UserService {
      */
     async updateUser(id, userData) {
         await this.getUserById(id);
-        const { name, email, password, phone_number, balance, role } = userData;
+        const { name, email, password, phone_number, balance, role, monthly_limit } = userData;
         if (email) {
             const [existing] = await pool.query(
                 'SELECT id FROM users WHERE email = ? AND deleted_at IS NULL AND id != ?',
@@ -180,6 +180,10 @@ class UserService {
         if (role !== undefined) {
             updates.push('role = ?');
             values.push(role);
+        }
+        if (monthly_limit !== undefined) {
+            updates.push('monthly_limit = ?');
+            values.push(monthly_limit);
         }
         if (updates.length > 0) {
             values.push(id);
