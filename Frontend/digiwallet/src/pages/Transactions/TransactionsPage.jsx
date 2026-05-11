@@ -38,8 +38,8 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadTransactions = useCallback(async () => {
-    setLoading(true);
+  const loadTransactions = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const res = await fetchMyTransactions({ limit: 100 });
@@ -51,14 +51,14 @@ export default function TransactionsPage() {
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Gagal memuat transaksi.");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadTransactions();
-    // Auto-refresh every 30 seconds to update pending status
-    const interval = setInterval(loadTransactions, 30000);
+    loadTransactions(true);
+    // Auto-refresh every 30 seconds to update pending status without loading spinner
+    const interval = setInterval(() => loadTransactions(false), 30000);
     return () => clearInterval(interval);
   }, [loadTransactions]);
 

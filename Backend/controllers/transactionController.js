@@ -252,16 +252,22 @@ class TransactionController {
     }
 
     /**
-     * Filter transaction list to show only product name, type, purchase date, and price
+     * Filter transaction list to show only allowed fields
      * @param {Array} transactions - List of transactions
      * @returns {Array} Filtered transactions
      */
     filterTransactionListFields = (transactions) => {
         return transactions.map(transaction => ({
+            id: transaction.id,
             product_name: transaction.product_name,
             product_type: transaction.product_type,
+            product_id: transaction.product_id,
+            customer_number: transaction.customer_number,
+            created_at: transaction.created_at,
             purchase_date: transaction.created_at,
-            amount: transaction.amount
+            amount: transaction.amount,
+            status: transaction.status,
+            reference_number: transaction.reference_number
         }));
     }
 }
