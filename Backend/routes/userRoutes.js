@@ -52,6 +52,17 @@ router.get('/me', authMiddleware, (req, res, next) => {
 }, userController.getMyProfile);
 
 /**
+ * @route   PUT /api/users/me
+ * @desc    Update current logged-in user's profile
+ * @access  Authenticated users
+ */
+router.put('/me', authMiddleware, (req, res, next) => {
+    // Inject user ID to params for validation and controller
+    req.params.id = req.user.id;
+    next();
+}, updateUserValidation, userController.updateUser);
+
+/**
  * @route   GET /api/users/:id
  * @desc    Get user by ID
  * @access  Public

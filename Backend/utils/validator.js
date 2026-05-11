@@ -43,7 +43,7 @@ const createUserValidation = [
     body('phone_number')
         .optional({ nullable: true })
         .trim()
-        .matches(/^[0-9]{10,15}$/).withMessage('Nomor telepon harus 10-15 digit'),
+        .matches(/^\+?[0-9\-\s]{8,20}$/).withMessage('Nomor telepon harus 8-20 digit (boleh dengan + atau -)'),
     body('balance')
         .optional()
         .isFloat({ min: 0 }).withMessage('Saldo tidak boleh negatif'),
@@ -65,7 +65,7 @@ const updateUserValidation = [
     body('phone_number')
         .optional({ nullable: true })
         .trim()
-        .matches(/^[0-9]{10,15}$/).withMessage('Nomor telepon harus 10-15 digit'),
+        .matches(/^\+?[0-9\-\s]{8,20}$/).withMessage('Nomor telepon harus 8-20 digit (boleh dengan + atau -)'),
     body('balance')
         .optional()
         .isFloat({ min: 0 }).withMessage('Saldo tidak boleh negatif'),

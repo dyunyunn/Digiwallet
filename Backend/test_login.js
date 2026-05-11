@@ -1,0 +1,1 @@
+﻿async function t(){const r=await fetch('http://localhost:8080/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@digiwallet.com',password:'admin123'})});console.log(await r.json());}t();
